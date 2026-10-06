@@ -47,22 +47,40 @@ purchases unless verified against a completed order.
 
 ## Development
 
-Install dependencies and configure a PostgreSQL database:
+Install dependencies, then create local environment settings and start
+PostgreSQL with Docker Compose:
 
 ```sh
 npm install
-npm run db:migrate
-npm run db:bootstrap-store
+cp .env.example .env
+```
+
+Replace `replace-with-local-password` in both `DATABASE_URL` and
+`POSTGRES_PASSWORD` in `.env` with the same local-only password, then run:
+
+```sh
+docker compose up -d --wait db
+npm run db:setup
 npm run api:dev
 ```
 
-Copy `.env.example` to `.env` and set `DATABASE_URL`, store name, currency, and
-country before running migrations or bootstrapping the initial store. In a
-separate terminal, run the frontend:
+`db:setup` creates the schema, initial store, and an illustrative three-product
+catalog with local product photos, starter variants, and sample inventory. This
+catalog exists in PostgreSQL (not in frontend code); its prices, stock, and
+descriptions are examples only and must be replaced with merchant-verified
+details before trading. Checkout remains disabled. The seed command is safe to
+rerun: existing product slugs are left untouched.
+
+In a separate terminal, run the frontend:
 
 ```sh
-npm run dev
+npm run dev -- --host 127.0.0.1 --port 5175
 ```
+
+Open [http://127.0.0.1:5175](http://127.0.0.1:5175/). If a store has already
+been bootstrapped, run `npm run db:seed-catalog` to add any missing starter
+listings without recreating the store. Stop the local database with
+`docker compose down`; its named volume retains the catalog between runs.
 
 Available checks:
 
@@ -83,6 +101,13 @@ The initial Kijiji Works configuration uses Unsplash photography:
 - Woven baskets — Zachary Staines
 - Straw weaving process — Wei-Cheng Wu
 - Potter at work — Courtney Cook
+- Basket detail — [Eduardo Rodriguez](https://unsplash.com/photos/brown-woven-baskets-on-white-table-uRCrdEiiVPU)
+- Ceramic vessels — [Chloe Bolton](https://unsplash.com/photos/ceramic-vases-on-wooden-surface-R0qthXq3jec)
+- Wooden bowl — [Max Letek](https://unsplash.com/photos/brown-wooden-round-bowl-on-white-table-d9mooKDcw-s)
+- Wooden bowls — [Nauval Hilmi](https://unsplash.com/photos/a-group-of-wooden-bowls-and-plates-on-a-table-C5eZRf7TkQA)
+
+Product photographs are illustrative and are not claims about a specific
+merchant, maker, or product.
 
 ## Architecture and delivery
 

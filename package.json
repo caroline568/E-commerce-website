@@ -9,6 +9,8 @@
     "api:dev": "node --watch backend/server.js",
     "db:migrate": "node backend/migrate.js",
     "db:bootstrap-store": "node backend/bootstrap-store.js",
+    "db:seed-catalog": "node backend/seed-catalog.js",
+    "db:setup": "npm run db:migrate && npm run db:bootstrap-store && npm run db:seed-catalog",
     "build": "vite build",
     "test": "node --test",
     "lint": "eslint .",
