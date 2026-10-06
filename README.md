@@ -82,6 +82,29 @@ been bootstrapped, run `npm run db:seed-catalog` to add any missing starter
 listings without recreating the store. Stop the local database with
 `docker compose down`; its named volume retains the catalog between runs.
 
+## Deploying the storefront and API to Vercel
+
+The Vercel project serves the Vite storefront and the Express API from the same
+origin. Product requests use `/api/v1` by default in production; keep
+`VITE_API_URL` unset or set it to `/api/v1` in Vercel, never to `localhost`.
+The API runs as a Vercel Node.js Function and expects a hosted PostgreSQL
+database.
+
+1. In the Vercel project, add the Neon integration and create a Neon database.
+2. In the Vercel production environment, set `DATABASE_URL` to Neon's pooled
+   connection string, `DATABASE_SSL=true`, `DATABASE_POOL_MAX=1`, and
+   `STORE_SLUG=kijiji-works`. Vercel deployment hostnames are automatically
+   allowed as same-origin API clients.
+3. Initialize the Neon database once from this project using the same pooled
+   connection string in your untracked local `.env`: run `npm run db:setup`.
+   Never paste database credentials into source files or commit `.env`.
+4. Redeploy the Vercel production branch and confirm
+   `/health/ready` and `/api/v1/products` respond successfully.
+
+The starter inventory and prices are examples, not live merchant information.
+Checkout remains disabled until a payment provider and verified webhook
+processing are implemented.
+
 Available checks:
 
 ```sh

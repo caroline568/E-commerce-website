@@ -21,6 +21,7 @@ const storeSlug = config.storeSlug;
 const allowedOrigins = config.corsOrigins;
 
 const app = express();
+if (process.env.VERCEL) app.set("trust proxy", 1);
 app.disable("x-powered-by");
 app.use(helmet());
 app.use((request, response, next) => {
@@ -618,20 +619,24 @@ app.use((error, request, response, _next) => {
   });
 });
 
-app.listen(port, () => {
-  console.info(
-    JSON.stringify({
-      level: "info",
-      event: "api_listening",
-      port,
-      storeSlug,
-    }),
-  );
-});
+export default app;
 
-for (const signal of ["SIGINT", "SIGTERM"]) {
-  process.on(signal, async () => {
-    await pool.end();
-    process.exit(0);
+if (!process.env.VERCEL) {
+  app.listen(port, () => {
+    console.info(
+      JSON.stringify({
+        level: "info",
+        event: "api_listening",
+        port,
+        storeSlug,
+      }),
+    );
   });
+
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.on(signal, async () => {
+      await pool.end();
+      process.exit(0);
+    });
+  }
 }

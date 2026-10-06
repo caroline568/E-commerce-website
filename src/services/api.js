@@ -1,6 +1,10 @@
-const apiBaseUrl = (
-  import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1"
-).replace(/\/$/, "");
+const defaultApiBaseUrl = import.meta.env.PROD
+  ? "/api/v1"
+  : "http://localhost:3000/api/v1";
+const apiBaseUrl = (import.meta.env.VITE_API_URL || defaultApiBaseUrl).replace(
+  /\/$/,
+  "",
+);
 
 export class ApiError extends Error {
   constructor(message, { status, code, details } = {}) {
