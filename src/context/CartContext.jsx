@@ -1,72 +1,71 @@
-import { createContext, useState, useContext } from "react";
-import { getProductById } from "../data/products";
+import { createContext, useContext, useState } from "react";
 
 const CartContext = createContext(null);
 
 export default function CartProvider({ children }) {
-  const [cartItems, setCartItems] = useState([]); // {id: 2, quantity: 7}
+  const [cartItems, setCartItems] = useState([]);
 
-  function addToCart(productId) {
-    const existing = cartItems.find((item) => item.id === productId);
-    if (existing) {
-      const currentQuantity = existing.quantity;
-      const updatedCartItems = cartItems.map((item) =>
-        item.id === productId
-          ? { id: productId, quantity: currentQuantity + 1 }
-          : item
-      );
-      setCartItems(updatedCartItems);
-    } else {
-      setCartItems([...cartItems, { id: productId, quantity: 1 }]);
+  function addToCart(product, variant) {
+    if (!variant || variant.availableQuantity < 1) {
+      return { success: false, error: "This option is currently unavailable." };
     }
-  }
 
-  function getCartItemsWithProducts() {
-    return cartItems
-      .map((item) => ({
-        ...item,
-        product: getProductById(item.id),
-      }))
-      .filter((item) => item.product);
-  }
-
-  function removeFromCart(productId) {
-    setCartItems(cartItems.filter((item) => item.id !== productId));
-  }
-
-  function updateQuantity(productId, quantity) {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
+    const existing = cartItems.find((item) => item.variant.id === variant.id);
+    if (existing?.quantity >= variant.availableQuantity) {
+      return { success: false, error: "No more stock is currently available." };
     }
-    setCartItems(
-      cartItems.map((item) =>
-        item.id === productId ? { ...item, quantity } : item
-      )
+
+    setCartItems((items) => {
+      const current = items.find((item) => item.variant.id === variant.id);
+      if (current) {
+        return items.map((item) =>
+          item.variant.id === variant.id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item,
+        );
+      }
+      return [...items, { product, variant, quantity: 1 }];
+    });
+    return { success: true };
+  }
+
+  function removeFromCart(variantId) {
+    setCartItems((items) =>
+      items.filter((item) => item.variant.id !== variantId),
     );
   }
 
-  function getCartTotal() {
-    const total = cartItems.reduce((total, item) => {
-      const product = getProductById(item.id);
-      return total + (product ? product.price * item.quantity : 0);
-    }, 0);
-    return total;
+  function updateQuantity(variantId, quantity) {
+    if (quantity < 1) {
+      removeFromCart(variantId);
+      return;
+    }
+    setCartItems((items) =>
+      items.map((item) =>
+        item.variant.id === variantId
+          ? {
+              ...item,
+              quantity: Math.min(quantity, item.variant.availableQuantity),
+            }
+          : item,
+      ),
+    );
   }
 
   function clearCart() {
     setCartItems([]);
   }
 
+  const itemCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+
   return (
     <CartContext.Provider
       value={{
         cartItems,
+        itemCount,
         addToCart,
-        getCartItemsWithProducts,
         removeFromCart,
         updateQuantity,
-        getCartTotal,
         clearCart,
       }}
     >
@@ -77,6 +76,6 @@ export default function CartProvider({ children }) {
 
 export function useCart() {
   const context = useContext(CartContext);
-
+  if (!context) throw new Error("useCart must be used within CartProvider.");
   return context;
 }

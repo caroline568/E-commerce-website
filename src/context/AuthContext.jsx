@@ -1,53 +1,52 @@
-import { createContext, useState, useContext } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { requestApi } from "../services/api";
 
 const AuthContext = createContext(null);
 
 export default function AuthProvider({ children }) {
-  const [user, setUser] = useState(
-    localStorage.getItem("currentUserEmail")
-      ? { email: localStorage.getItem("currentUserEmail") }
-      : null
-  );
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  function signUp(email, password) {
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
+  useEffect(() => {
+    const controller = new AbortController();
 
-    if (users.find((u) => u.email === email)) {
-      return { success: false, error: "Email already exists" };
-    }
-    const newUser = { email, password };
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
-    localStorage.setItem("currentUserEmail", email);
+    requestApi("/auth/session", { signal: controller.signal })
+      .then(({ data }) => setUser(data.user))
+      .catch((error) => {
+        if (error.name !== "AbortError") {
+          console.error("Unable to restore the customer session.", error);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
 
-    setUser({ email });
+    return () => controller.abort();
+  }, []);
 
-    return { success: true };
+  async function signUp(email, password, displayName) {
+    const { data } = await requestApi("/auth/register", {
+      method: "POST",
+      body: JSON.stringify({ email, password, displayName }),
+    });
+    setUser(data.user);
   }
 
-  function login(email, password) {
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    const user = users.find(
-      (u) => u.email === email && u.password === password
-    );
-
-    if (!user) {
-      return { success: false, error: "Invalid email or password" };
-    }
-
-    localStorage.setItem("currentUserEmail", email);
-    setUser({ email });
-
-    return { success: true };
+  async function login(email, password) {
+    const { data } = await requestApi("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+    setUser(data.user);
   }
 
-  function logout() {
-    localStorage.removeItem("currentUserEmail");
+  async function logout() {
+    await requestApi("/auth/logout", { method: "POST" });
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ signUp, user, logout, login }}>
+    <AuthContext.Provider value={{ user, loading, signUp, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
@@ -55,6 +54,6 @@ export default function AuthProvider({ children }) {
 
 export function useAuth() {
   const context = useContext(AuthContext);
-
+  if (!context) throw new Error("useAuth must be used within AuthProvider.");
   return context;
 }
